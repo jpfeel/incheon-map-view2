@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<!-- saved from url=(0035)file:///C:/Users/A/incheon_map.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
+  <title>인천 3-Active 데이터 기반 성과 분석</title>
+  <script src="./index_files/chart.min.js.다운로드"></script>
+  <link href="./index_files/css2" rel="stylesheet">
+  <link href="./index_files/all.min.css" rel="stylesheet">
+
+  <style>
+    /* ----- [Layout & Reset] ----- */
+    :root {
+        --primary: #0f172a;       /* Navy */
+        --accent: #2563eb;        /* Royal Blue */
+        --success: #10b981;       /* Teal */
+        --warning: #f59e0b;       /* Amber */
+        --danger: #ef4444;        /* Red */
+        --bg-light: #f8fafc;      /* Slate 50 */
+        --text-main: #334155;     /* Slate 700 */
+        --text-sub: #64748b;      /* Slate 500 */
+        --border: #e2e8f0;
+        --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    body, html { 
+        width: 100%; height: 100%; margin: 0; padding: 0; 
+        font-family: 'Noto Sans KR', sans-serif; 
+        background-color: var(--bg-light); 
+        color: var(--text-main);
+        overflow: hidden; 
+    }
+
+    .container { display: flex; width: 100%; height: 100%; }
+
+    /* Left: Map Area */
+    .map-area { width: 45%; height: 100%; position: relative; border-right: 1px solid var(--border); }
+    #map { width: 100%; height: 100%; }
+
+    /* Right: Dashboard Area */
+    .dashboard-area { width: 55%; height: 100%; display: flex; flex-direction: column; background: #fff; }
+
+    /* Map Elements */
+    .dot-node { width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); cursor: pointer; transition: 0.2s; }
+    .dot-node:hover { transform: scale(1.3); }
+    .label-overlay {
+      background: rgba(255, 255, 255, 0.95); border-radius: 6px; border: 1px solid var(--border);
+      padding: 3px 8px; font-size: 11px; font-weight: 800; color: var(--primary); margin-top: -12px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1); white-space: nowrap;
+    }
+    .legend {
+      position: absolute; top: 20px; left: 20px; z-index: 999;
+      background: rgba(255, 255, 255, 0.95); padding: 15px; border-radius: 8px;
+      box-shadow: var(--shadow); border: 1px solid var(--border);
+    }
+    .legend h3 { margin: 0 0 10px 0; font-size: 14px; font-weight: 800; color: var(--primary); }
+    .legend-item { margin-bottom: 5px; font-size: 12px; display: flex; align-items: center; color: var(--text-sub); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+
+    /* Dashboard Header */
+    .header { padding: 20px 30px; border-bottom: 1px solid var(--border); background: #fff; }
+    .title-row { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px; }
+    .main-title { font-size: 22px; font-weight: 900; color: var(--primary); letter-spacing: -0.5px; margin: 0; }
+    .sub-title { font-size: 13px; color: var(--text-sub); margin: 4px 0 0; }
+    .data-badges span { 
+        font-size: 10px; font-weight: 700; color: var(--text-sub); 
+        background: var(--bg-light); padding: 4px 8px; border-radius: 4px; margin-left: 4px; 
+    }
+
+    /* KPI Cards */
+    .kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+    .kpi-card {
+        background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
+        border: 1px solid #dae4f3; border-radius: 8px; padding: 15px;
+        position: relative;
+    }
+    .kpi-label { font-size: 11px; font-weight: 700; color: var(--text-sub); text-transform: uppercase; display: block; margin-bottom: 5px; }
+    .kpi-val { font-size: 22px; font-weight: 900; color: var(--accent); }
+    .kpi-unit { font-size: 12px; font-weight: 600; color: var(--text-sub); }
+    .kpi-icon { position: absolute; right: 15px; top: 15px; font-size: 20px; color: #cbd5e1; }
+
+    /* Tab Navigation */
+    .tab-nav { display: flex; padding: 0 30px; background: #fff; border-bottom: 1px solid var(--border); margin-top: 10px; }
+    .tab-btn {
+        padding: 12px 20px; font-size: 14px; font-weight: 600; color: var(--text-sub);
+        border: none; background: none; cursor: pointer; border-bottom: 3px solid transparent;
+        transition: all 0.2s;
+    }
+    .tab-btn:hover { color: var(--accent); background: var(--bg-light); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 800; }
+
+    /* Content Area */
+    .content { flex: 1; overflow-y: auto; padding: 25px 30px; background: var(--bg-light); }
+    .tab-pane { display: none; animation: fadeIn 0.4s; }
+    .tab-pane.active { display: block; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Logic Insight Box */
+    .insight-box {
+        background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px;
+        border-left: 4px solid var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        border: 1px solid var(--border); border-left-width: 4px;
+    }
+    .insight-header { display: flex; align-items: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed var(--border); }
+    .insight-title { font-size: 14px; font-weight: 800; color: var(--primary); margin-left: 8px; }
+    .insight-body { font-size: 13px; color: var(--text-main); line-height: 1.6; display: grid; grid-template-columns: 1fr; gap: 8px; }
+
+    .tag { 
+        display: inline-block; padding: 2px 6px; border-radius: 4px; 
+        font-size: 10px; font-weight: 700; color: white; margin-right: 6px; vertical-align: middle;
+    }
+    .tag-tel { background: #e11d48; } /* Rose */
+    .tag-card { background: #d97706; } /* Amber */
+    .tag-med { background: #059669; } /* Emerald */
+
+    /* Chart Grid */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+    .card { 
+        background: white; border-radius: 10px; padding: 20px; 
+        box-shadow: var(--shadow); border: 1px solid var(--border); 
+        display: flex; flex-direction: column;
+    }
+    .full { grid-column: span 2; }
+
+    .card-head { 
+        font-size: 15px; font-weight: 700; color: var(--primary); 
+        margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid var(--bg-light);
+        display: flex; justify-content: space-between; align-items: center;
+    }
+    .card-footer {
+        margin-top: 15px; padding: 10px; background: #f0f9ff; border-radius: 6px;
+        font-size: 12px; color: #0369a1; font-weight: 600; text-align: center;
+        border: 1px solid #bae6fd;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+  </style>
+<script src="./index_files/kakao.js.다운로드"></script></head>
+<body>
+
+<div id="tooltip" class="tooltip"></div>
+
+<div class="container">
+  <div class="map-area">
+      <div id="map" style="position: relative; overflow: hidden; background: url(&quot;http://t1.daumcdn.net/mapjsapi/images/2x/bg_tile.png&quot;);"><div style="position: absolute; left: 0px; top: 0px; width: 100%; height: 100%; touch-action: none; cursor: url(&quot;http://t1.daumcdn.net/mapjsapi/images/2x/cursor/openhand.cur.ico&quot;) 7 5, url(&quot;http://t1.daumcdn.net/mapjsapi/images/2x/cursor/openhand.cur.ico&quot;), default;"><div style="position: absolute;"><div style="position: absolute; z-index: 0;"></div><div style="position: absolute; z-index: 1; left: 0px; top: 0px;"><img src="./index_files/10.png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: -67px; top: 1052px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/11.png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 189px; top: 1052px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/12.png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 445px; top: 1052px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/13.png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 701px; top: 1052px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/14.png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 957px; top: 1052px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/15.png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 1213px; top: 1052px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/10(1).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: -67px; top: 796px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/11(1).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 189px; top: 796px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/12(1).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 445px; top: 796px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/13(1).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 701px; top: 796px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/14(1).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 957px; top: 796px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/15(1).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 1213px; top: 796px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/10(2).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: -67px; top: 540px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/11(2).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 189px; top: 540px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/12(2).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 445px; top: 540px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/13(2).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 701px; top: 540px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/14(2).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 957px; top: 540px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/15(2).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 1213px; top: 540px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/10(3).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: -67px; top: 284px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/11(3).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 189px; top: 284px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/12(3).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 445px; top: 284px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/13(3).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 701px; top: 284px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/14(3).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 957px; top: 284px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/15(3).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 1213px; top: 284px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/10(4).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: -67px; top: 28px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/11(4).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 189px; top: 28px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/12(4).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 445px; top: 28px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/13(4).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 701px; top: 28px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/14(4).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 957px; top: 28px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/15(4).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 1213px; top: 28px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/10(5).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: -67px; top: -228px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/11(5).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 189px; top: -228px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/12(5).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 445px; top: -228px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/13(5).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 701px; top: -228px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/14(5).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 957px; top: -228px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"><img src="./index_files/15(5).png" alt="" draggable="false" style="position: absolute; user-select: none; -webkit-user-drag: none; min-width: 0px; min-height: 0px; max-width: none; max-height: none; left: 1213px; top: -228px; opacity: 1; transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease; width: 256px; height: 256px;"></div><div style="position: absolute; z-index: 1;"></div><div style="width: 1047px; height: 1186px; position: absolute; z-index: 1;"></div><div style="position: absolute; z-index: 1;"><svg version="1.1" style="stroke: none; stroke-dashoffset: 0.5; stroke-linejoin: round; fill: none; transform: translateZ(0px); position: absolute; width: 5235px; height: 5930px; left: -2094px; top: -2372px;" viewBox="0 0 5235 5930"><defs></defs></svg></div><div style="position: absolute; z-index: 1; width: 100%; height: 0px; transform: translateZ(0px);"><div style="position: absolute; z-index: 5; white-space: nowrap; margin: -8px 0px 0px -8px; left: 584px; top: 582px;"><div class="dot-node" style="background:#10b981; border-color:#10b981"></div></div><div style="position: absolute; z-index: 4; white-space: nowrap; margin: -27px 0px 0px -34px; left: 584px; top: 582px;"><div class="label-overlay">북구도서관</div></div><div style="position: absolute; z-index: 5; white-space: nowrap; margin: -8px 0px 0px -8px; left: 558px; top: 619px;"><div class="dot-node" style="background:#10b981; border-color:#10b981"></div></div><div style="position: absolute; z-index: 4; white-space: nowrap; margin: -27px 0px 0px -34px; left: 558px; top: 619px;"><div class="label-overlay">부평도서관</div></div><div style="position: absolute; z-index: 5; white-space: nowrap; margin: -8px 0px 0px -8px; left: 594px; top: 513px;"><div class="dot-node" style="background:#10b981; border-color:#10b981"></div></div><div style="position: absolute; z-index: 4; white-space: nowrap; margin: -27px 0px 0px -34px; left: 594px; top: 513px;"><div class="label-overlay">계양도서관</div></div><div style="position: absolute; z-index: 5; white-space: nowrap; margin: -8px 0px 0px -8px; left: 524px; top: 603px;"><div class="dot-node" style="background:#10b981; border-color:#10b981"></div></div><div style="position: absolute; z-index: 4; white-space: nowrap; margin: -27px 0px 0px -34px; left: 524px; top: 603px;"><div class="label-overlay">서구도서관</div></div><div style="position: absolute; z-index: 5; white-space: nowrap; margin: -8px 0px 0px -8px; left: 541px; top: 670px;"><div class="dot-node" style="background:#10b981; border-color:#10b981"></div></div><div style="position: absolute; z-index: 4; white-space: nowrap; margin: -27px 0px 0px -34px; left: 541px; top: 670px;"><div class="label-overlay">주안도서관</div></div><div style="position: absolute; z-index: 5; white-space: nowrap; margin: -8px 0px 0px -8px; left: 555px; top: 670px;"><div class="dot-node" style="background:#10b981; border-color:#10b981"></div></div><div style="position: absolute; z-index: 4; white-space: nowrap; margin: -27px 0px 0px -34px; left: 555px; top: 670px;"><div class="label-overlay">중앙도서관</div></div><div style="position: absolute; z-index: 5; white-space: nowrap; margin: -8px 0px 0px -8px; left: 531px; top: 735px;"><div class="dot-node" style="background:#10b981; border-color:#10b981"></div></div><div style="position: absolute; z-index: 4; white-space: nowrap; margin: -27px 0px 0px -34px; left: 531px; top: 735px;"><div class="label-overlay">연수도서관</div></div><div style="position: absolute; z-index: 5; white-space: nowrap; margin: -8px 0px 0px -8px; left: 453px; top: 624px;"><div class="dot-node" style="background:#10b981; border-color:#10b981"></div></div><div style="position: absolute; z-index: 4; white-space: nowrap; margin: -27px 0px 0px -39px; left: 453px; top: 624px;"><div class="label-overlay">화도진도서관</div></div><div style="position: absolute; z-index: 5; white-space: nowrap; margin: -8px 0px 0px -8px; left: 255px; top: 160px;"><div class="dot-node" style="background:#ef4444; border-color:#ef4444"></div></div><div style="position: absolute; z-index: 4; white-space: nowrap; margin: -27px 0px 0px -34px; left: 255px; top: 160px;"><div class="label-overlay">강화도서관</div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 579px; top: 592px;"><div class="dot-node" style="background:#3b82f6; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 603px; top: 591px;"><div class="dot-node" style="background:#3b82f6; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 585px; top: 594px;"><div class="dot-node" style="background:#3b82f6; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 590px; top: 589px;"><div class="dot-node" style="background:#3b82f6; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 593px; top: 512px;"><div class="dot-node" style="background:#3b82f6; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 593px; top: 535px;"><div class="dot-node" style="background:#3b82f6; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 525px; top: 611px;"><div class="dot-node" style="background:#3b82f6; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 526px; top: 605px;"><div class="dot-node" style="background:#3b82f6; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 498px; top: 529px;"><div class="dot-node" style="background:#3b82f6; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 564px; top: 670px;"><div class="dot-node" style="background:#3b82f6; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 544px; top: 647px;"><div class="dot-node" style="background:#3b82f6; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 537px; top: 728px;"><div class="dot-node" style="background:#3b82f6; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 523px; top: 746px;"><div class="dot-node" style="background:#3b82f6; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 504px; top: 796px;"><div class="dot-node" style="background:#3b82f6; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 501px; top: 698px;"><div class="dot-node" style="background:#3b82f6; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 531px; top: 679px;"><div class="dot-node" style="background:#3b82f6; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 447px; top: 633px;"><div class="dot-node" style="background:#3b82f6; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 450px; top: 631px;"><div class="dot-node" style="background:#3b82f6; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 249px; top: 150px;"><div class="dot-node" style="background:#3b82f6; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 282px; top: 169px;"><div class="dot-node" style="background:#3b82f6; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 584px; top: 611px;"><div class="dot-node" style="background:#f59e0b; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 590px; top: 578px;"><div class="dot-node" style="background:#f59e0b; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 578px; top: 523px;"><div class="dot-node" style="background:#f59e0b; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 522px; top: 746px;"><div class="dot-node" style="background:#f59e0b; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 512px; top: 755px;"><div class="dot-node" style="background:#f59e0b; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 489px; top: 723px;"><div class="dot-node" style="background:#f59e0b; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 606px; top: 616px;"><div class="dot-node" style="background:#f59e0b; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 485px; top: 532px;"><div class="dot-node" style="background:#f59e0b; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 463px; top: 640px;"><div class="dot-node" style="background:#f59e0b; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 464px; top: 640px;"><div class="dot-node" style="background:#f59e0b; border-color:white; width:10px; height:10px;"></div></div><div style="position: absolute; z-index: 0; white-space: nowrap; margin: -7px 0px 0px -7px; left: 465px; top: 641px;"><div class="dot-node" style="background:#f59e0b; border-color:white; width:10px; height:10px;"></div></div></div></div></div><div style="position: absolute; cursor: default; z-index: 1; margin: 0px 6px; height: 19px; line-height: 14px; left: 0px; bottom: 0px; color: rgb(0, 0, 0);"><div style="color: rgb(0, 0, 0); text-align: center; font-size: 10px; float: left;"><div style="float: left; margin: 2px 3px 0px 4px; height: 6px; transition: width 0.1s; border-top: none rgb(0, 0, 0); border-right: 2px solid rgb(0, 0, 0); border-bottom: 2px solid rgb(0, 0, 0); border-left: 2px solid rgb(0, 0, 0); border-image: initial; width: 58px;"></div><div style="float: left; margin: 0px 4px 0px 0px; font-family: AppleSDGothicNeo-Regular, 돋움, dotum, sans-serif; font-weight: bold; color: rgb(0, 0, 0);">4km</div></div><div style="margin: 0px 4px; float: left;"><a target="_blank" href="http://map.kakao.com/" style="float: left; width: 32px; height: 10px;"><img src="./index_files/m_bi_b.png" alt="Kakao 맵으로 이동(새창열림)" style="float: left; width: 32px; height: 10px; border: none;"></a><div style="font: 11px / 11px Arial, Tahoma, Dotum, sans-serif; float: left;"></div></div></div><div style="cursor: auto; position: absolute; z-index: 2; left: 0px; top: 0px;"></div></div>
+      <div class="legend">
+        <h3>INCHEON 3-ACTIVE</h3>
+        <div class="legend-item"><span class="dot" style="background:#2ecc71;"></span>거점 도서관 (Hub)</div>
+        <div class="legend-item"><span class="dot" style="background:#e74c3c;"></span>Cold Spot (지원필요)</div>
+        <div class="legend-item"><span class="dot" style="background:#3498db;"></span>참여 학교 (School)</div>
+        <div class="legend-item"><span class="dot" style="background:#f39c12;"></span>협력 서점 (Store)</div>
+      </div>
+  </div>
+
+  <div class="dashboard-area">
+
+      <div class="header">
+          <div class="title-row">
+              <div>
+                  <h1 class="main-title">3-Active 성과 분석 리포트</h1>
+                  <p class="sub-title">통신·카드·의료 데이터 결합 기반 교육 효과성 검증</p>
+              </div>
+              <div class="data-badges">
+                  <span>통신사</span><span>카드사</span><span>CB사</span>
+              </div>
+          </div>
+
+          <div class="kpi-row">
+              <div class="kpi-card">
+                  <span class="kpi-label">디지털 디톡스 총량</span>
+                  <div><span class="kpi-val">48,200</span> <span class="kpi-unit">시간</span></div>
+                  <i class="fas fa-mobile-alt kpi-icon"></i>
+              </div>
+              <div class="kpi-card">
+                  <span class="kpi-label">오프라인 또래활동 증가</span>
+                  <div><span class="kpi-val">+ 140</span> <span class="kpi-unit">%</span></div>
+                  <i class="fas fa-user-friends kpi-icon"></i>
+              </div>
+              <div class="kpi-card">
+                  <span class="kpi-label">사회적 비용 절감</span>
+                  <div><span class="kpi-val">15.3</span> <span class="kpi-unit">% ▼</span></div>
+                  <i class="fas fa-hospital-user kpi-icon"></i>
+              </div>
+          </div>
+      </div>
+
+      <div class="tab-nav">
+          <button type="button" class="tab-btn active" onclick="openTab(event, &#39;tab1&#39;)">1. 여가 생활 (Leisure)</button>
+          <button type="button" class="tab-btn" onclick="openTab(event, &#39;tab2&#39;)">2. 사회 생활 (Social)</button>
+          <button type="button" class="tab-btn" onclick="openTab(event, &#39;tab3&#39;)">3. 건강 생활 (Health)</button>
+      </div>
+
+      <div class="content">
+
+          <div id="tab1" class="tab-pane active" style="display: block;">
+              <div class="insight-box" style="border-left-color: #2563eb;">
+                  <div class="insight-header">
+                      <i class="fas fa-gamepad" style="color:#2563eb; margin-right:8px;"></i>
+                      <span class="insight-title" style="color:#2563eb;">디지털 과몰입 해소 &amp; 여가 질적 개선</span>
+                  </div>
+                  <div class="insight-body">
+                      <div><span class="tag tag-tel">통신</span> <strong>건전 여가 장소 점유율:</strong> PC방(수동) 대비 도서관/체육관(능동) 체류 시간 비율 측정</div>
+                      <div><span class="tag tag-card">카드</span> <strong>문화 소비 다양성 지수:</strong> 영화관 편중 소비에서 서점/전시/공연 등 문화 카테고리 확장성</div>
+                  </div>
+              </div>
+
+              <div class="grid-2">
+                  <div class="card">
+                      <div class="card-head">디지털 과몰입 해소 (Healthy Place Share)</div>
+                      <canvas id="chartHealthyPlace" width="610" height="304" style="display: block; box-sizing: border-box; height: 276.364px; width: 554.545px;"></canvas>
+                      <div class="card-footer">📉 PC방 체류 50% 감소 / 📈 도서관·체육관 체류 2배 증가</div>
+                  </div>
+                  <div class="card">
+                      <div class="card-head">여가 몰입도 (Deep Stay Rate)</div>
+                      <canvas id="chartDeepStay" width="610" height="304" style="display: block; box-sizing: border-box; height: 276.364px; width: 554.545px;"></canvas>
+                      <div class="card-footer">✨ 2시간 이상 '몰입 활동' 비율 대폭 상승</div>
+                  </div>
+              </div>
+              <div class="card">
+                  <div class="card-head">문화 소비 카테고리 다양성 (Culture Entropy)</div>
+                  <div style="height: 250px;"><canvas id="chartEntropy" width="1289" height="275" style="display: block; box-sizing: border-box; height: 250px; width: 1171.82px;"></canvas></div>
+              </div>
+          </div>
+
+          <div id="tab2" class="tab-pane" style="display: none;">
+              <div class="insight-box" style="border-left-color: #f59e0b;">
+                  <div class="insight-header">
+                      <i class="fas fa-users" style="color:#f59e0b; margin-right:8px;"></i>
+                      <span class="insight-title" style="color:#f59e0b;">고립에서 소통으로 (Social Interaction)</span>
+                  </div>
+                  <div class="insight-body">
+                      <div><span class="tag tag-tel">통신</span> <strong>공공 커뮤니티 도달률:</strong> 학교-집 경로 외 공공시설(주민센터, 복지관 등) 방문 트래픽 분석</div>
+                      <div><span class="tag tag-card">카드</span> <strong>또래 문화 활동 지수(Social Play):</strong> '방에서 혼자 하는 게임/웹툰(고립)' vs '친구와 함께 하는 포토부스/노래방(교류)' 소비 패턴 변화</div>
+                  </div>
+              </div>
+
+              <div class="card" style="margin-bottom: 20px;">
+                  <div class="card-head">지역사회 참여 활동 증가 (Civic Engagement)</div>
+                  <canvas id="chartCivic" height="343" style="display: block; box-sizing: border-box; height: 311.818px; width: 1171.82px;" width="1289"></canvas>
+              </div>
+
+              <div class="grid-2">
+                  <div class="card">
+                      <div class="card-head">
+                        <span>또래 문화 활동 (Peer Social Activity)</span>
+                        <i class="fas fa-user-friends" style="color:#f59e0b;"></i>
+                      </div>
+                      <canvas id="chartSocialPlay" height="305" style="display: block; box-sizing: border-box; height: 277.273px; width: 557.273px;" width="613"></canvas>
+                      <div class="card-footer" style="color:#b45309; background:#fffbeb; border-color:#fef3c7;">
+                          🤝 고립형(게임) 소비 감소 → <strong>교류형(사진/체험) 소비 급증</strong>
+                      </div>
+                  </div>
+                  <div class="card">
+                      <div class="card-head">로컬 착한 소비 (Local Value Spend)</div>
+                      <canvas id="chartLocalSpend" height="612" style="display: block; box-sizing: border-box; height: 556.364px; width: 557.273px;" width="613"></canvas>
+                      <div class="card-footer" style="color:#b45309; background:#fffbeb; border-color:#fef3c7;">
+                          🏘️ 프랜차이즈보다 우리 동네 소상공인 가게 이용 증가
+                      </div>
+                  </div>
+              </div>
+          </div>
+
+          <div id="tab3" class="tab-pane" style="display: none;">
+              <div class="insight-box" style="border-left-color: #10b981;">
+                  <div class="insight-header">
+                      <i class="fas fa-heartbeat" style="color:#10b981; margin-right:8px;"></i>
+                      <span class="insight-title" style="color:#10b981;">신체/정신 건강 증진 효과</span>
+                  </div>
+                  <div class="insight-body">
+                      <div><span class="tag tag-med">의료</span> <strong>의료비 역상관 분석:</strong> 활동량 증가와 안과/정형외과(스마트폰 질환) 진료비 간의 상관관계</div>
+                      <div><span class="tag tag-tel">통신</span> <strong>활동 반경(Radius):</strong> 집 중심 좌식 생활(Sedentary) 탈피 여부 및 이동 거리 측정</div>
+                  </div>
+              </div>
+
+              <div class="card">
+                  <div class="card-head">활동량 증가에 따른 만성질환 의료비 감소 효과</div>
+                  <canvas id="chartMedical" height="518" style="display: block; box-sizing: border-box; height: 470.909px; width: 1177.27px;" width="1295"></canvas>
+                  <div class="card-footer" style="color:#065f46; background:#ecfdf5; border-color:#a7f3d0;">
+                      📉 활동 지수가 높아질수록, 관련 의료비 지출은 뚜렷하게 감소함 (상관계수 -0.82)
+                  </div>
+              </div>
+          </div>
+
+      </div>
+  </div>
+</div>
+
+<script src="./index_files/sdk.js.다운로드"></script>
+<script>
+// 1. Map Logic
+kakao.maps.load(function () {
+    var mapContainer = document.getElementById('map');
+    var mapOption = { center: new kakao.maps.LatLng(37.50, 126.68), level: 9 };
+    var map = new kakao.maps.Map(mapContainer, mapOption);
+
+    var hubs = [{"name": "북구도서관", "lat": 37.5066218, "lng": 126.7230735, "type": "Hub", "region": "부평권"}, {"name": "부평도서관", "lat": 37.4849744, "lng": 126.7045964, "type": "Hub", "region": "부평권"}, {"name": "계양도서관", "lat": 37.5459641, "lng": 126.7301965, "type": "Hub", "region": "계양권"}, {"name": "서구도서관", "lat": 37.4943306, "lng": 126.6796541, "type": "Hub", "region": "서구권"}, {"name": "주안도서관", "lat": 37.4554851, "lng": 126.6927471, "type": "Hub", "region": "미추홀권"}, {"name": "중앙도서관", "lat": 37.4556557, "lng": 126.7025455, "type": "Hub", "region": "남동권"}, {"name": "연수도서관", "lat": 37.4178463, "lng": 126.6852658, "type": "Hub", "region": "연수권"}, {"name": "화도진도서관", "lat": 37.4817612, "lng": 126.6282561, "type": "Hub", "region": "동구권"}, {"name": "강화도서관", "lat": 37.7488175, "lng": 126.4831844, "type": "Cold Spot", "region": "강화권"}];
+    var schools = [{"name": "부평여고", "lat": 37.5005587, "lng": 126.7196623, "hub": "북구도서관", "traffic": 320}, {"name": "부광중", "lat": 37.5012607, "lng": 126.7368838, "hub": "북구도서관", "traffic": 210}, {"name": "부평동초", "lat": 37.4996601, "lng": 126.72374, "hub": "부평도서관", "traffic": 150}, {"name": "부평고", "lat": 37.5022465, "lng": 126.7275792, "hub": "부평도서관", "traffic": 180}, {"name": "계산고", "lat": 37.5469338, "lng": 126.7296607, "hub": "계양도서관", "traffic": 290}, {"name": "작전중", "lat": 37.5333644, "lng": 126.7295462, "hub": "계양도서관", "traffic": 220}, {"name": "가좌고", "lat": 37.4894556, "lng": 126.680834, "hub": "서구도서관", "traffic": 190}, {"name": "가림고", "lat": 37.4928274, "lng": 126.6812112, "hub": "서구도서관", "traffic": 160}, {"name": "청라고", "lat": 37.5369893, "lng": 126.6607886, "hub": "서구도서관", "traffic": 310}, {"name": "구월중", "lat": 37.4553432, "lng": 126.7092909, "hub": "중앙도서관", "traffic": 250}, {"name": "석정여고", "lat": 37.4686806, "lng": 126.6946944, "hub": "중앙도서관", "traffic": 200}, {"name": "인천여고", "lat": 37.422241, "lng": 126.6896458, "hub": "연수도서관", "traffic": 280}, {"name": "연수고", "lat": 37.4114651, "lng": 126.6798641, "hub": "연수도서관", "traffic": 260}, {"name": "박문여고", "lat": 37.3827092, "lng": 126.6660388, "hub": "연수도서관", "traffic": 140}, {"name": "학익고", "lat": 37.4390469, "lng": 126.6633655, "hub": "주안도서관", "traffic": 170}, {"name": "주안남초", "lat": 37.4502383, "lng": 126.685418, "hub": "주안도서관", "traffic": 130}, {"name": "제물포고", "lat": 37.4766308, "lng": 126.6239769, "hub": "화도진도서관", "traffic": 190}, {"name": "인일여고", "lat": 37.4779465, "lng": 126.6261618, "hub": "화도진도서관", "traffic": 210}, {"name": "강화여고", "lat": 37.7546656, "lng": 126.478954, "hub": "강화도서관", "traffic": 110}, {"name": "갑룡초", "lat": 37.7436611, "lng": 126.5029419, "hub": "강화도서관", "traffic": 90}];
+    var bookstores = [{"name": "더북스", "lat": 37.4897746, "lng": 126.7233082, "hub": "부평도서관", "traffic": 80}, {"name": "낮잠과바람", "lat": 37.5086005, "lng": 126.7278369, "hub": "북구도서관", "traffic": 60}, {"name": "책방산책", "lat": 37.5404568, "lng": 126.7190295, "hub": "계양도서관", "traffic": 70}, {"name": "세종문고", "lat": 37.4115479, "lng": 126.6786156, "hub": "연수도서관", "traffic": 95}, {"name": "열다책방", "lat": 37.4066529, "lng": 126.6714896, "hub": "연수도서관", "traffic": 50}, {"name": "위즈덤스퀘어", "lat": 37.425, "lng": 126.655, "hub": "중앙도서관", "traffic": 85}, {"name": "미래문고", "lat": 37.4869218, "lng": 126.7391518, "hub": "서구도서관", "traffic": 110}, {"name": "서점안착", "lat": 37.534924, "lng": 126.6515736, "hub": "서구도서관", "traffic": 65}, {"name": "나비날다", "lat": 37.4728064, "lng": 126.6361411, "hub": "화도진도서관", "traffic": 40}, {"name": "한미서점", "lat": 37.4725453, "lng": 126.636669, "hub": "주안도서관", "traffic": 55}, {"name": "나즌문턱", "lat": 37.4723723, "lng": 126.6373493, "hub": "화도진도서관", "traffic": 45}];
+
+    hubs.forEach(h => {
+        var color = (h.type === 'Cold Spot') ? '#ef4444' : '#10b981';
+        new kakao.maps.CustomOverlay({
+            map: map, position: new kakao.maps.LatLng(h.lat, h.lng),
+            content: '<div class="dot-node" style="background:'+color+'; border-color:'+color+'"></div>', zIndex: 5
+        });
+        new kakao.maps.CustomOverlay({
+            map: map, position: new kakao.maps.LatLng(h.lat, h.lng),
+            content: '<div class="label-overlay">'+h.name+'</div>', yAnchor: 2.5, zIndex: 4
+        });
+    });
+    schools.forEach(s => {
+        new kakao.maps.CustomOverlay({ map: map, position: new kakao.maps.LatLng(s.lat, s.lng), content: '<div class="dot-node" style="background:#3b82f6; border-color:white; width:10px; height:10px;"></div>' });
+    });
+    bookstores.forEach(b => {
+        new kakao.maps.CustomOverlay({ map: map, position: new kakao.maps.LatLng(b.lat, b.lng), content: '<div class="dot-node" style="background:#f59e0b; border-color:white; width:10px; height:10px;"></div>' });
+    });
+});
+
+// 2. Tab Logic
+function openTab(evt, tabName) {
+    evt.preventDefault();
+    var i, tabcontent, tablinks;
+    tabcontent = document.getElementsByClassName("tab-pane");
+    for (i = 0; i < tabcontent.length; i++) {
+        tabcontent[i].classList.remove("active");
+        tabcontent[i].style.display = "none";
+    }
+    tablinks = document.getElementsByClassName("tab-btn");
+    for (i = 0; i < tablinks.length; i++) {
+        tablinks[i].className = tablinks[i].className.replace(" active", "");
+    }
+    var target = document.getElementById(tabName);
+    target.style.display = "block";
+    setTimeout(() => target.classList.add("active"), 10);
+    evt.currentTarget.className += " active";
+}
+
+// 3. Charts
+Chart.defaults.font.family = "'Noto Sans KR', sans-serif";
+Chart.defaults.color = '#64748b';
+Chart.defaults.scale.grid.color = '#f1f5f9';
+
+document.addEventListener("DOMContentLoaded", function() {
+
+    // [Tab 1] Healthy Place (Stacked Bar)
+    new Chart(document.getElementById('chartHealthyPlace'), {
+        type: 'bar',
+        data: {
+            labels: ["사업 시행 전", "사업 시행 후"],
+            datasets: [
+                { label: 'PC방/게임 (수동적)', data: [70, 35], backgroundColor: '#94a3b8', borderRadius: 4 },
+                { label: '도서관/체육관 (능동적)', data: [30, 65], backgroundColor: '#2563eb', borderRadius: 4 }
+            ]
+        },
+        options: {
+            indexAxis: 'y', responsive: true,
+            scales: { x: { stacked: true, max: 100, grid: { display: false } }, y: { stacked: true, grid: { display: false } } }
+        }
+    });
+
+    // [Tab 1] Deep Stay (Bar)
+    new Chart(document.getElementById('chartDeepStay'), {
+        type: 'bar',
+        data: {
+            labels: ["도서관", "서점", "문화센터"],
+            datasets: [
+                { label: '기존 (Before)', data: [30, 20, 40], backgroundColor: '#cbd5e1', borderRadius: 4 },
+                { label: '사업 후 (After)', data: [65, 55, 75], backgroundColor: '#2563eb', borderRadius: 4 }
+            ]
+        },
+        options: { responsive: true, scales: { y: { beginAtZero: true, max: 100 } } }
+    });
+
+    // [Tab 1] Culture Entropy (Radar)
+    new Chart(document.getElementById('chartEntropy'), {
+        type: 'radar',
+        data: {
+            labels: ["영화", "도서", "공연/전시", "스포츠", "체험활동"],
+            datasets: [
+                { label: '기존 (영화 편중)', data: [60, 10, 10, 10, 10], borderColor: '#94a3b8', backgroundColor: 'rgba(148, 163, 184, 0.2)', borderWidth: 2 },
+                { label: '3-Active (균형)', data: [30, 25, 20, 15, 10], borderColor: '#2563eb', backgroundColor: 'rgba(37, 99, 235, 0.2)', borderWidth: 2 }
+            ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { r: { suggestedMin: 0, suggestedMax: 60 } } }
+    });
+
+    // [Tab 2] Civic Engagement (Line Area)
+    new Chart(document.getElementById('chartCivic'), {
+        type: 'line',
+        data: {
+            labels: ["1월", "2월", "3월", "4월", "5월", "6월"],
+            datasets: [{
+                label: '공공시설 방문 트래픽', data: [120, 150, 300, 450, 520, 680],
+                borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.1)', fill: true, tension: 0.4
+            }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+
+    // [Tab 2] Social Play (Stacked Bar - Logic Updated)
+    new Chart(document.getElementById('chartSocialPlay'), {
+        type: 'bar',
+        data: {
+            labels: ['사업 전', '사업 후'],
+            datasets: [
+                { label: '온라인/개인 (게임)', data: [75, 25], backgroundColor: '#94a3b8', stack: 'Stack 0', borderRadius: 4 },
+                { label: '오프라인/또래 (교류)', data: [40, 60], backgroundColor: '#f59e0b', stack: 'Stack 0', borderRadius: 4 }
+            ]
+        },
+        options: { 
+            indexAxis: 'y', responsive: true, 
+            scales: { x: { stacked: true, max: 100 }, y: { stacked: true } } 
+        }
+    });
+
+    // [Tab 2] Local Spend (Doughnut)
+    new Chart(document.getElementById('chartLocalSpend'), {
+        type: 'doughnut',
+        data: {
+            labels: ['대형 프랜차이즈', '동네 소상공인'],
+            datasets: [{ data: [40, 60], backgroundColor: ['#cbd5e1', '#f59e0b'] }]
+        },
+        options: { cutout: '75%', plugins: { legend: { position: 'bottom' } } }
+    });
+
+    // [Tab 3] Medical Cost (Mixed)
+    new Chart(document.getElementById('chartMedical'), {
+        type: 'bar',
+        data: {
+            labels: ["24.1Q", "24.2Q", "24.3Q", "24.4Q", "25.1Q", "25.2Q"],
+            datasets: [
+                { 
+                    label: '활동 지수', data: [40, 45, 60, 75, 85, 95], 
+                    type: 'line', borderColor: '#10b981', borderWidth: 3, order: 1, yAxisID: 'y' 
+                },
+                { 
+                    label: '의료비 지수', data: [100, 98, 85, 70, 65, 55], 
+                    backgroundColor: 'rgba(16, 185, 129, 0.2)', borderRadius: 4, order: 2, yAxisID: 'y1' 
+                }
+            ]
+        },
+        options: { 
+            responsive: true,
+            scales: {
+                y: { title: { display: true, text: '신체활동 지수' }, position: 'left' },
+                y1: { title: { display: true, text: '의료비 지수' }, position: 'right', grid: { drawOnChartArea: false } }
+            }
+        }
+    });
+});
+</script>
+
+
+
+</body></html>
